@@ -3,7 +3,7 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-class App:
+class WheelUI:
     def __init__(self):
         self.builder = Gtk.Builder()
         self.builder.add_from_file("mainui.glade")
@@ -13,15 +13,16 @@ class App:
         self.buttonTopLeft = self.builder.get_object("ButtonTopLeft")
 
         self.window.set_decorated(False)
+        self.window.set_keep_above(True)
         self.enable_transparency()
 
         self.window.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
 
         self.window.connect("destroy", Gtk.main_quit)
-        self.window.connect("focus-out-event", self.on_focus_out)
+        # self.window.connect("focus-out-event", self.on_focus_out)
         
         self.buttonTopLeft.connect("clicked", self.button_clicked)
-        self.window.connect("button-press-event", Gtk.main_quit)
+        # self.window.connect("button-press-event", Gtk.main_quit)
 
     def enable_transparency(self):
         # Set the window as app-paintable
@@ -58,11 +59,18 @@ class App:
         print("Button clicked!");
 
 
-    def run(self):
+    def show(self):
         self.window.show_all()
-        Gtk.main()
+
+    def hide(self):
+        self.window.hide()
+
+    def close(self):
+        Gtk.main_quit()
+
 
 if __name__ == "__main__":
-    app = App()
-    app.run()
+    app = WheelUI()
+    app.show()
+    Gtk.main()
 
