@@ -1,35 +1,26 @@
-import gi
 import threading
+from main import WheelUI
 from pynput import keyboard
+from gi.repository import GLib, Gtk
 
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
-
-class BackgroundApp:
+class App:
     def __init__(self):
-        # Create the GTK window
-        self.window = Gtk.Window(title="Background App")
-        self.window.set_default_size(400, 300)
-        self.window.connect("destroy", Gtk.main_quit)
-
-        # Remove the window's title bar (no close, minimize, or maximize buttons)
-        self.window.set_decorated(False)
-
-        # Set the window to always stay on top
-        self.window.set_keep_above(True)
-
-        # Add a simple label
-        label = Gtk.Label(label="Hello! Press and hold Alt + Shift to show me.")
-        self.window.add(label)
-        self.window.hide()  # Start hidden
+        self.wheel = WheelUI()
+        self.is_window_visible = False  # Track whether the window is currently visible
 
     def show_window(self):
         """Show the window."""
-        self.window.show_all()
+        if not self.is_window_visible:
+            self.is_window_visible = True
+            GLib.idle_add(self.wheel.show)
+            print("Window shown")
 
     def hide_window(self):
         """Hide the window."""
-        self.window.hide()
+        if self.is_window_visible:
+            self.is_window_visible = False
+            GLib.idle_add(self.wheel.hide)
+            print("Window hidden")
 
 def key_listener(app):
     """Listen for keybindings to show/hide the UI."""
@@ -51,15 +42,16 @@ def key_listener(app):
         if keyboard.Key.alt not in pressed_keys or keyboard.Key.shift not in pressed_keys:
             app.hide_window()
 
-    with keyboard.Listener(on_press=on_key_press, on_release=on_key_release) as listener:
-        listener.join()
+    # Using the listener in a non-blocking way
+    listener = keyboard.Listener(on_press=on_key_press, on_release=on_key_release)
+    listener.start()  # Start listener without blocking
 
 if __name__ == "__main__":
-    app = BackgroundApp()
+    app = App()
 
     # Run the key listener in a separate thread
-    listener_thread = threading.Thread(target=key_listener, args=(app,), daemon=True)
+    listener_thread = threading.Thread(target=key_listener, args=(app,))
+    listener_thread.daemon = True  # Daemon thread will exit when the main program exits
     listener_thread.start()
 
-    # Run the GTK main loop
-    Gtk.main()
+    Gtk.main()  # Start the GTK event loop in the main thread
