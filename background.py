@@ -33,6 +33,7 @@ def key_listener(app):
         # Show the window when Alt + Shift are pressed
         if keyboard.Key.alt in pressed_keys and keyboard.Key.shift in pressed_keys:
             app.show_window()
+            print("Pressed keybinding: Showing window")
 
     def on_key_release(key):
         """Track released keys."""
@@ -41,6 +42,7 @@ def key_listener(app):
         # Hide the window when Alt + Shift are released
         if keyboard.Key.alt not in pressed_keys or keyboard.Key.shift not in pressed_keys:
             app.hide_window()
+            print("Released keybinding: Hiding window")
 
     # Using the listener in a non-blocking way
     listener = keyboard.Listener(on_press=on_key_press, on_release=on_key_release)
