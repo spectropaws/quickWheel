@@ -6,14 +6,21 @@ from gi.repository import GLib, Gtk
 class App:
     def __init__(self):
         self.wheel = WheelUI()
+        self.is_window_visible = False  # Track whether the window is currently visible
 
     def show_window(self):
         """Show the window."""
-        GLib.idle_add(self.wheel.show)
+        if not self.is_window_visible:
+            self.is_window_visible = True
+            GLib.idle_add(self.wheel.show)
+            print("Window shown")
 
     def hide_window(self):
         """Hide the window."""
-        GLib.idle_add(self.wheel.hide)
+        if self.is_window_visible:
+            self.is_window_visible = False
+            GLib.idle_add(self.wheel.hide)
+            print("Window hidden")
 
 def key_listener(app):
     """Listen for keybindings to show/hide the UI."""
