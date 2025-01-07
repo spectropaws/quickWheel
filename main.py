@@ -1,76 +1,59 @@
-import gi
-gi.require_version("Gtk", "3.0")
-from gi.repository import Gtk
-from gi.repository import Gdk
+import threading
+from wheel import Wheel
+from pynput import keyboard
+from gi.repository import GLib, Gtk
 
-class WheelUI:
+class App:
     def __init__(self):
-        self.builder = Gtk.Builder()
-        self.builder.add_from_file("mainui.glade")
-        self.builder.connect_signals(self)
+        self.wheel = Wheel()
+        self.is_window_visible = False  # Track whether the window is currently visible
 
-        self.window = self.builder.get_object("MainWindow")
-        self.buttonTopLeft = self.builder.get_object("ButtonTopLeft")
+    def show_window(self):
+        """Show the window."""
+        if not self.is_window_visible:
+            self.is_window_visible = True
+            GLib.idle_add(self.wheel.show)
+            print("Window shown")
 
-        self.window.set_decorated(False)
-        self.window.set_keep_above(True)
-        self.enable_transparency()
+    def hide_window(self):
+        """Hide the window."""
+        if self.is_window_visible:
+            self.is_window_visible = False
+            GLib.idle_add(self.wheel.hide)
+            print("Window hidden")
 
-        self.window.add_events(Gdk.EventMask.BUTTON_PRESS_MASK)
+def key_listener(app):
+    """Listen for keybindings to show/hide the UI."""
+    pressed_keys = set()
 
-        self.window.connect("destroy", Gtk.main_quit)
-        # self.window.connect("focus-out-event", self.on_focus_out)
-        
-        self.buttonTopLeft.connect("clicked", self.button_clicked)
-        # self.window.connect("button-press-event", Gtk.main_quit)
+    def on_key_press(key):
+        """Track pressed keys."""
+        pressed_keys.add(key)
 
-    def enable_transparency(self):
-        # Set the window as app-paintable
-        self.window.set_app_paintable(True)
+        # Show the window when Alt + Shift are pressed
+        if keyboard.Key.alt in pressed_keys and keyboard.Key.shift in pressed_keys:
+            app.show_window()
+            print("Pressed keybinding: Showing window")
 
-        # Set a transparent visual
-        screen = self.window.get_screen()
-        visual = screen.get_rgba_visual()
-        if visual and screen.is_composited():
-            self.window.set_visual(visual)
-        else:
-            print("Transparency not supported. Ensure compositor is running.")
+    def on_key_release(key):
+        """Track released keys."""
+        pressed_keys.discard(key)
 
-        # Apply CSS for transparency
-        css_provider = Gtk.CssProvider()
-        css_provider.load_from_data(b"""
-        window {
-            background-color: rgba(0, 0, 0, 0); /* Fully transparent */
-        }
-        """)
-        style_context = Gtk.StyleContext()
-        style_context.add_provider_for_screen(
-            Gdk.Screen.get_default(),
-            css_provider,
-            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
-        )
+        # Hide the window when Alt + Shift are released
+        if keyboard.Key.alt not in pressed_keys or keyboard.Key.shift not in pressed_keys:
+            app.hide_window()
+            print("Released keybinding: Hiding window")
 
-
-    def on_focus_out(self, widget, event):
-        print("Focus lost. Destroying window.")
-        widget.destroy()
-
-    def button_clicked(self, widget, event):
-        print("Button clicked!");
-
-
-    def show(self):
-        self.window.show_all()
-
-    def hide(self):
-        self.window.hide()
-
-    def close(self):
-        Gtk.main_quit()
-
+    # Using the listener in a non-blocking way
+    listener = keyboard.Listener(on_press=on_key_press, on_release=on_key_release)
+    listener.start()  # Start listener without blocking
 
 if __name__ == "__main__":
-    app = WheelUI()
-    app.show()
-    Gtk.main()
+    app = App()
 
+    # Run the key listener in a separate thread
+    listener_thread = threading.Thread(target=key_listener, args=(app,))
+    listener_thread.daemon = True  # Daemon thread will exit when the main program exits
+    listener_thread.start()
+
+    Gtk.main()  # Start the GTK event loop in the main thread
